@@ -4,10 +4,10 @@ namespace coffin\jwtauth\provider\JWT;
 
 use Exception;
 use ReflectionClass;
-use Lcobucci\JWT\Parser;
-use Lcobucci\JWT\Builder;
 use Lcobucci\JWT\Signer\Rsa;
 use Lcobucci\JWT\Signer\Ecdsa;
+use Lcobucci\JWT\Token\Parser;
+use Lcobucci\JWT\Token\Builder;
 use Lcobucci\JWT\Signer\Keychain;
 use coffin\jwtauth\exception\JWTException;
 use Lcobucci\JWT\Signer\Rsa\Sha256 as RS256;

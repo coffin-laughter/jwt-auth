@@ -61,7 +61,7 @@ $ php think jwt:create
 
 对于需要验证的路由或者模块添加中间件：
 ```php
- thans\jwt\middleware\JWTAuth::class,
+ coffin\jwtauth\middleware\JWTAuth::class,
 ```
 
 示例：
@@ -82,7 +82,7 @@ token刷新说明：
 > refresh_ttl为刷新token有效期参数，单位为分钟。默认有效期14天。
 > token过期后，旧token将会被加入黑名单。
 > token进入黑名单后有个延迟缓冲期，期间旧token仍可用，默认3秒
-> 如果需要自动刷新，请使用中间件  thans\jwt\middleware\JWTAuthAndRefresh::class,
+> 如果需要自动刷新，请使用中间件  coffin\jwtauth\middleware\JWTAuthAndRefresh::class,
 > 自动刷新后会通过header返回，请保存好。（注意，此中间件过期后第一次访问正常，第二次进入黑名单。）
 
 
