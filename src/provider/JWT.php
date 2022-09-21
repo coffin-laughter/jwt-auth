@@ -2,6 +2,8 @@
 
 namespace coffin\jwtauth\provider;
 
+use Lcobucci\JWT\Encoding\ChainedFormatter;
+use Lcobucci\JWT\Encoding\JoseEncoder;
 use think\App;
 use think\Request;
 use think\Container;
@@ -102,8 +104,8 @@ class JWT
                 'password' => $this->config['password'],
             ];
         Container::getInstance()->make('coffin\jwtauth\provider\JWT\Lcobucci', [
-            new Builder(),
-            new Parser(),
+            new Builder(new JoseEncoder(),new ChainedFormatter()),
+            new Parser(new JoseEncoder()),
             $this->config['algo'],
             $keys,
         ]);
