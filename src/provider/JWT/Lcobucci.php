@@ -69,10 +69,7 @@ class Lcobucci extends Provider
         $this->builder->unsign();
 
         try {
-            foreach ($payload as $key => $val) {
-                $this->builder->set($key, $val->getValue());
-            }
-            $this->builder->sign($this->signer, $this->getSigningKey());
+            return (string) $this->builder->getToken($this->signer, $this->getSigningKey());
         } catch (Exception $e) {
             throw new JWTException(
                 'Could not create token :' . $e->getMessage(),
@@ -80,8 +77,6 @@ class Lcobucci extends Provider
                 $e
             );
         }
-
-        return (string) $this->builder->getToken();
     }
 
 
