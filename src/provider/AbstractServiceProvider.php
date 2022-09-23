@@ -41,16 +41,11 @@ abstract class AbstractServiceProvider extends Service
         $this->registerJWTCommand();
     }
 
-    protected function config($key, $default = null)
-    {
-        return $this->config[ $key ] ?: $default;
-    }
-
     protected function registerClaimFactory()
     {
         $this->app->make('coffin\jwtauth\claim\Factory', [
             $this->app->request,
-        ])->setTTL($this->config('ttl'))->setRequest($this->config('leeway'));
+        ])->setTTL($this->config['ttl'])->setRequest($this->config['leeway']);
     }
 
     protected function registerJWT()
@@ -64,14 +59,14 @@ abstract class AbstractServiceProvider extends Service
     protected function registerJWTAuth()
     {
         $this->app->make('coffin\jwtauth\JWTAuth')
-            ->lockSubject($this->config('lock_subject'));
+            ->lockSubject($this->config['lock_subject']);
     }
 
     protected function registerJWTBlacklist()
     {
         $this->app->make('coffin\jwtauth\Blacklist', [
-            new $this->config('blacklist_storage'),
-        ])->setGracePeriod($this->config('blacklist_grace_period'))->setRefreshTTL($this->config('refresh_ttl'));
+            new $this->config['blacklist_storage'],
+        ])->setGracePeriod($this->config['blacklist_grace_period'])->setRefreshTTL($this->config['refresh_ttl']);
     }
 
     protected function registerJWTCommand()
@@ -82,9 +77,9 @@ abstract class AbstractServiceProvider extends Service
     protected function registerLcobucciProvider()
     {
         $this->app->make('coffin\jwtauth\provider\JWT\Lcobucci', [
-            $this->config('secret'),
-            $this->config('algo'),
-            $this->config('keys')
+            $this->config['secret'],
+            $this->config['algo'],
+            $this->config['keys']
         ]);
     }
 
@@ -94,8 +89,8 @@ abstract class AbstractServiceProvider extends Service
             $this->app->make('coffin\jwtauth\provider\JWT\Lcobucci'),
             $this->app->make('coffin\jwtauth\Blacklist'),
             $this->app->make('coffin\jwtauth\Factory'),
-        ])->setBlacklistEnabled((bool) $this->config('blacklist_enabled'))
-            ->setPersistentClaims($this->config('persistent_claims'));
+        ])->setBlacklistEnabled((bool) $this->config['blacklist_enabled'])
+            ->setPersistentClaims($this->config['persistent_claims']);
     }
 
     protected function registerPayloadFactory()
@@ -109,8 +104,8 @@ abstract class AbstractServiceProvider extends Service
     protected function registerPayloadValidator()
     {
         $this->app->make('coffin\jwtauth\validator\PayloadValidator')
-            ->setRefreshTTL($this->config('refresh_ttl'))
-            ->setRequiredClaims($this->config('required_claims'));
+            ->setRefreshTTL($this->config['refresh_ttl'])
+            ->setRequiredClaims($this->config['required_claims']);
     }
 
     protected function registerStorageProvider()
