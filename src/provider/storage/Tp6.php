@@ -3,7 +3,7 @@
 namespace coffin\jwtauth\provider\storage;
 
 use think\facade\Cache;
-use coffin\jwtauth\contract\Storage;
+use coffin\jwtauth\contract\provider\Storage;
 
 class Tp6 implements Storage
 {

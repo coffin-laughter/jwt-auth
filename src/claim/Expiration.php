@@ -7,12 +7,20 @@ use coffin\jwtauth\exception\TokenExpiredException;
 
 class Expiration extends Claim
 {
+    use DatetimeTrait;
+
+    /**
+     * {@inheritdoc}
+     */
     protected $name = 'exp';
 
+    /**
+     * {@inheritdoc}
+     */
     public function validatePayload()
     {
-        if (time() >= (int) $this->getValue()) {
-            throw new TokenExpiredException('The token is expired.');
+        if ($this->isPast($this->getValue())) {
+            throw new TokenExpiredException('Token has expired');
         }
     }
 }

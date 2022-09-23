@@ -1,7 +1,7 @@
 <?php
 
 
-namespace coffin\jwtauth\middleware;
+namespace coffin\jwtauth\http\middleware;
 
 use think\Request;
 use coffin\jwtauth\provider\JWT as JWTProvider;

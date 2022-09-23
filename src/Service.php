@@ -3,13 +3,8 @@
 namespace coffin\jwtauth;
 
 use coffin\jwtauth\middleware\InjectJwt;
-use coffin\jwtauth\command\SecretCommand;
+use coffin\jwtauth\provider\ThinkPHP6ServiceProvider;
 
-class Service extends \think\Service
+class Service extends ThinkPHP6ServiceProvider
 {
-    public function boot()
-    {
-        $this->commands(SecretCommand::class);
-        $this->app->middleware->add(InjectJwt::class);
-    }
 }

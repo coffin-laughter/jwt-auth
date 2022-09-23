@@ -3,136 +3,235 @@
 namespace coffin\jwtauth;
 
 use coffin\jwtauth\provider\JWT\Provider;
-use coffin\jwtauth\exception\TokenExpiredException;
-use coffin\jwtauth\exception\TokenBlacklistException;
+use coffin\jwtauth\support\CustomClaims;
+use coffin\jwtauth\support\RefreshFlow;
+// use coffin\jwtauth\contract\provider\JWT as JWTContract;
+use coffin\jwtauth\provider\JWT\Lcobucci as JWTContract;
 
 class Manager
 {
+    use CustomClaims;
+    use RefreshFlow;
+
+    /**
+     * The blacklist.
+     *
+     * @var Blacklist
+     */
     protected $blacklist;
 
-    protected $delayList;
+    /**
+     * The blacklist flag.
+     *
+     * @var bool
+     */
+    protected $blacklistEnabled = true;
 
-    protected $payload;
+    /**
+     * the payload factory.
+     *
+     * @var Factory
+     */
+    protected $payloadFactory;
 
-    protected $refresh;
+    /**
+     * the persistent claims.
+     *
+     * @var array
+     */
+    protected $persistentClaims = [];
 
-    public function __construct(
-        Blacklist $blacklist,
-        DelayList $delayList,
-        Payload   $payload,
-        Provider  $provider
-    )
+    /**
+     * The provider.
+     *
+     * @var \coffin\jwtauth\provider\JWT
+     */
+    protected $provider;
+
+    /**
+     * Constructor.
+     *
+     * @param \coffin\jwtauth\contract\provider\JWT $provider
+     * @param Blacklist                             $blacklist
+     * @param \coffin\jwtauth\Factory               $payloadFactory
+     *
+     * @return void
+     */
+    public function __construct(JWTContract $provider, Blacklist $blacklist, Factory $payloadFactory)
     {
-        $this->blacklist = $blacklist;
-        $this->delayList = $delayList;
-        $this->payload = $payload;
         $this->provider = $provider;
+        $this->blacklist = $blacklist;
+        $this->payloadFactory = $payloadFactory;
     }
 
     /**
-     * 解析Token
+     * Decode a Token and return the Payload.
      *
-     * @param Token $token
+     * @param \coffin\jwtauth\Token $token
+     * @param bool                  $checkBlacklist
      *
-     * @return mixed
-     * @throws TokenBlacklistException
+     * @return \coffin\jwtauth\Payload
+     *
+     * @throws \coffin\jwtauth\Exceptions\TokenBlacklistedException
      */
-    public function decode(Token $token)
+    public function decode(Token $token, $checkBlacklist = true)
     {
-        $payload = $this->provider->decode($token->get());
+        $payloadArray = $this->provider->decode($token->get());
 
-        try {
-            $this->payload->customer($payload)->check($this->refresh);
-        } catch (TokenExpiredException $exception) {
-            if ($this->delayList->has($payload)) {
-                return $payload;
-            }
-            //blacklist verify
-            if ($this->validate($payload)) {
-                throw new TokenBlacklistException('The token is in blacklist.');
-            }
+        $payload = $this->payloadFactory
+            ->setRefreshFlow($this->refreshFlow)
+            ->customClaims($payloadArray)
+            ->make();
 
-            throw $exception;
+        if ($checkBlacklist && $this->blacklistEnabled && $this->blacklist->has($payload)) {
+            throw new TokenBlacklistedException('The token has been blacklisted');
         }
 
         return $payload;
     }
 
     /**
-     * Token编码
+     * Encode a Payload and return the Token.
      *
-     * @param $customerClaim
+     * @param \coffin\jwtauth\Payload $payload
      *
-     * @return Token
+     * @return \coffin\jwtauth\Token
      */
-    public function encode($customerClaim = [])
+    public function encode(Payload $payload)
     {
-        $payload = $this->payload->customer($customerClaim);
         $token = $this->provider->encode($payload->get());
 
         return new Token($token);
     }
 
     /**
-     * 注销Token，使之无效
+     * Get the Blacklist instance.
      *
-     * @param Token $token
-     *
-     * @return Blacklist
-     * @throws TokenBlacklistException
+     * @return \coffin\jwtauth\Blacklist
      */
-    public function invalidate(Token $token)
+    public function getBlacklist()
     {
-        return $this->blacklist->add($this->provider->decode($token->get()));
+        return $this->blacklist;
     }
 
     /**
-     * 刷新Token
+     * Get the JWTProvider instance.
      *
-     * @param Token $token
-     *
-     * @return Token
-     * @throws TokenBlacklistException
+     * @return \coffin\jwtauth\contract\provider\JWT
      */
-    public function refresh(Token $token)
+    public function getJWTProvider()
     {
-        $this->setRefresh();
-        $payload = $this->decode($token);
-        $this->invalidate($token);
-        //延迟列表
-        $this->temporary($token);
-
-        $this->payload->customer($payload)
-            ->check(true);
-
-        return $this->encode($payload);
+        return $this->provider;
     }
 
-    public function setRefresh($refresh = true)
+    /**
+     * Get the Payload Factory instance.
+     *
+     * @return \coffin\jwtauth\Factory
+     */
+    public function getPayloadFactory()
     {
-        $this->refresh = true;
+        return $this->payloadFactory;
+    }
+
+    /**
+     * Invalidate a Token by adding it to the blacklist.
+     *
+     * @param \coffin\jwtauth\Token $token
+     * @param bool                  $forceForever
+     *
+     * @return bool
+     *
+     * @throws \coffin\jwtauth\exception\JWTException
+     */
+    public function invalidate(Token $token, $forceForever = false)
+    {
+        if ( ! $this->blacklistEnabled) {
+            throw new JWTException('You must have the blacklist enabled to invalidate a token.');
+        }
+
+        return call_user_func(
+            [$this->blacklist, $forceForever ? 'addForever' : 'add'],
+            $this->decode($token, false)
+        );
+    }
+
+    /**
+     * Refresh a Token and return a new Token.
+     *
+     * @param \coffin\jwtauth\Token $token
+     * @param bool                  $forceForever
+     * @param bool                  $resetClaims
+     *
+     * @return \coffin\jwtauth\Token
+     */
+    public function refresh(Token $token, $forceForever = false, $resetClaims = false)
+    {
+        $this->setRefreshFlow();
+
+        $claims = $this->buildRefreshClaims($this->decode($token));
+
+        if ($this->blacklistEnabled) {
+            // Invalidate old token
+            $this->invalidate($token, $forceForever);
+        }
+
+        // Return the new token
+        return $this->encode(
+            $this->payloadFactory->customClaims($claims)->make($resetClaims)
+        );
+    }
+
+    /**
+     * Set whether the blacklist is enabled.
+     *
+     * @param bool $enabled
+     *
+     * @return $this
+     */
+    public function setBlacklistEnabled($enabled)
+    {
+        $this->blacklistEnabled = $enabled;
 
         return $this;
     }
 
     /**
-     * @return DelayList
+     * Set the claims to be persisted when refreshing a token.
+     *
+     * @param array $claims
+     *
+     * @return $this
      */
-    public function temporary(Token $token)
+    public function setPersistentClaims(array $claims)
     {
-        return $this->delayList->add($this->provider->decode($token->get()));
+        $this->persistentClaims = $claims;
+
+        return $this;
     }
 
-
     /**
-     * 验证是否在黑名单
+     * Build the claims to go into the refreshed token.
      *
-     * @param $payload
+     * @param \coffin\jwtauth\Payload $payload
      *
-     * @return bool
+     * @return array
      */
-    public function validate($payload)
+    protected function buildRefreshClaims(Payload $payload)
     {
-        return $this->blacklist->has($payload);
+        // Get the claims to be persisted from the payload
+        $persistentClaims = collect($payload->toArray())
+            ->only($this->persistentClaims)
+            ->toArray();
+
+        // persist the relevant claims
+        return array_merge(
+            $this->customClaims,
+            $persistentClaims,
+            [
+                'sub' => $payload['sub'],
+                'iat' => $payload['iat'],
+            ]
+        );
     }
 }

@@ -4,95 +4,218 @@
 namespace coffin\jwtauth\claim;
 
 use think\Request;
+use think\helper\Str;
+use coffin\jwtauth\support\Utils;
 
 class Factory
 {
-    protected $classMap
-        = [
-            'aud' => Audience::class,
-            'exp' => Expiration::class,
-            'iat' => IssuedAt::class,
-            'iss' => Issuer::class,
-            'jti' => JwtId::class,
-            'nbf' => NotBefore::class,
-            'sub' => Subject::class,
-        ];
+    /**
+     * The request.
+     *
+     * @var \think\Request
+     */
+    protected $request;
 
-    protected $ttl;
-    protected $claim = [];
-    protected $refreshTtl;
+    /**
+     * The TTL.
+     *
+     * @var int
+     */
+    protected $ttl = 60;
 
-    public function __construct(Request $request, $ttl, $refreshTtl)
+    /**
+     * Time leeway in seconds.
+     *
+     * @var int
+     */
+    protected $leeway = 0;
+
+    /**
+     * The classes map.
+     *
+     * @var array
+     */
+    private $classMap = [
+        'aud' => Audience::class,
+        'exp' => Expiration::class,
+        'iat' => IssuedAt::class,
+        'iss' => Issuer::class,
+        'jti' => JwtId::class,
+        'nbf' => NotBefore::class,
+        'sub' => Subject::class,
+    ];
+
+    /**
+     * Constructor.
+     *
+     * @param \think\Request $request
+     *
+     * @return void
+     */
+    public function __construct(Request $request)
     {
         $this->request = $request;
-        $this->ttl = $ttl;
-        $this->refreshTtl = $refreshTtl;
     }
 
-    public function customer($key, $value)
+    /**
+     * Get the instance of the claim when passing the name and value.
+     *
+     * @param string $name
+     * @param mixed  $value
+     *
+     * @return Claim
+     */
+    public function get($name, $value)
     {
-        $this->claim[ $key ] = isset($this->classMap[ $key ])
-            ? new $this->classMap[ $key ]($value)
-            : new Customer($key, $value);
+        if ($this->has($name)) {
+            $claim = new $this->classMap[ $name ]($value);
 
-        return $this;
-    }
-
-    public function builder()
-    {
-        foreach ($this->classMap as $key => $class) {
-            $claim[ $key ] = new $class(method_exists($this, $key)
-                ? $this->$key() : '');
+            return method_exists($claim, 'setLeeway') ?
+                $claim->setLeeway($this->leeway) :
+                $claim;
         }
-        $this->claim = array_merge($this->claim, $claim);
 
-        return $this;
+        return new Custom($name, $value);
     }
 
-    public function validate($refresh = false)
+    /**
+     * Check whether the claim exists.
+     *
+     * @param string $name
+     *
+     * @return bool
+     */
+    public function has($name)
     {
-        foreach ($this->claim as $key => $claim) {
-            if ( ! $refresh && method_exists($claim, 'validatePayload')) {
-                $claim->validatePayload();
-            }
-            if ($refresh && method_exists($claim, 'validateRefresh')) {
-                $claim->validateRefresh($this->refreshTtl);
-            }
-        }
+        return array_key_exists($name, $this->classMap);
     }
 
-    public function getClaims()
+    /**
+     * Generate the initial value and return the Claim instance.
+     *
+     * @param string $name
+     *
+     * @return Claim
+     */
+    public function make($name)
     {
-        return $this->claim;
+        return $this->get($name, $this->$name());
     }
 
-    public function aud()
-    {
-        return $this->request->url();
-    }
-
-    public function exp()
-    {
-        return time() + $this->ttl;
-    }
-
-    public function iat()
-    {
-        return time();
-    }
-
+    /**
+     * Get the Issuer (iss) claim.
+     *
+     * @return string
+     */
     public function iss()
     {
         return $this->request->url();
     }
 
-    public function jti()
+    /**
+     * Get the Issued At (iat) claim.
+     *
+     * @return int
+     */
+    public function iat()
     {
-        return md5(uniqid() . time() . rand(100000, 9999999));
+        return Utils::now()->getTimestamp();
     }
 
+    /**
+     * Get the Expiration (exp) claim.
+     *
+     * @return int
+     */
+    public function exp()
+    {
+        return Utils::now()->addMinutes($this->ttl)->getTimestamp();
+    }
+
+    /**
+     * Get the Not Before (nbf) claim.
+     *
+     * @return int
+     */
     public function nbf()
     {
-        return time();
+        return Utils::now()->getTimestamp();
+    }
+
+    /**
+     * Get the JWT Id (jti) claim.
+     *
+     * @return string
+     */
+    public function jti()
+    {
+        return Str::random();
+    }
+
+    /**
+     * Add a new claim mapping.
+     *
+     * @param string $name
+     * @param string $classPath
+     *
+     * @return $this
+     */
+    public function extend($name, $classPath)
+    {
+        $this->classMap[ $name ] = $classPath;
+
+        return $this;
+    }
+
+    /**
+     * Set the request instance.
+     *
+     * @param \think\Request $request
+     *
+     * @return $this
+     */
+    public function setRequest(Request $request)
+    {
+        $this->request = $request;
+
+        return $this;
+    }
+
+    /**
+     * Set the token ttl (in minutes).
+     *
+     * @param int $ttl
+     *
+     * @return $this
+     */
+    public function setTTL($ttl)
+    {
+        $this->ttl = $ttl;
+
+        return $this;
+    }
+
+    /**
+     * Get the token ttl.
+     *
+     * @return int
+     */
+    public function getTTL()
+    {
+        return $this->ttl;
+    }
+
+    /**
+     * Set the leeway in seconds.
+     *
+     * @param int $leeway
+     *
+     * @return $this
+     */
+    public function setLeeway($leeway)
+    {
+        $this->leeway = $leeway;
+
+        return $this;
     }
 }

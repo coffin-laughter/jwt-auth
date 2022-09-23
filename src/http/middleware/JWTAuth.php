@@ -1,7 +1,7 @@
 <?php
 
 
-namespace coffin\jwtauth\middleware;
+namespace coffin\jwtauth\http\middleware;
 
 class JWTAuth extends BaseMiddleware
 {
