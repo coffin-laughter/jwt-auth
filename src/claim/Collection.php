@@ -13,14 +13,17 @@
 namespace coffin\jwtauth\claim;
 
 
-use think\helper\Arr;
+use coffin\jwtauth\claim\collect\Arr;
+use coffin\jwtauth\claim\collect\Collection as CoffinCollection;
+use think\helper\Str;
 
-class Collection extends \think\Collection
+class Collection extends CoffinCollection
 {
     /**
      * Create a new collection.
      *
-     * @param  mixed  $items
+     * @param mixed $items
+     *
      * @return void
      */
     public function __construct($items = [])
@@ -31,9 +34,10 @@ class Collection extends \think\Collection
     /**
      * Get a Claim instance by it's unique name.
      *
-     * @param  string  $name
-     * @param  callable  $callback
-     * @param  mixed  $default
+     * @param string   $name
+     * @param callable $callback
+     * @param mixed    $default
+     *
      * @return \coffin\jwtauth\claim\Claim
      */
     public function getByClaimName($name, callable $callback = null, $default = null)
@@ -46,7 +50,8 @@ class Collection extends \think\Collection
     /**
      * Validate each claim under a given context.
      *
-     * @param  string  $context
+     * @param string $context
+     *
      * @return $this
      */
     public function validate($context = 'payload')
@@ -55,8 +60,9 @@ class Collection extends \think\Collection
         array_shift($args);
 
         $this->each(function ($claim) use ($context, $args) {
+            $str = Str::upper(Str::substr($context, 0, 1)) . Str::substr($context, 1);
             call_user_func_array(
-                [$claim, 'validate'.ucfirst($context)],
+                [$claim, 'validate' . $str],
                 $args
             );
         });
@@ -67,7 +73,8 @@ class Collection extends \think\Collection
     /**
      * Determine if the Collection contains all of the given keys.
      *
-     * @param  mixed  $claims
+     * @param mixed $claims
+     *
      * @return bool
      */
     public function hasAllClaims($claims)
@@ -98,20 +105,41 @@ class Collection extends \think\Collection
     /**
      * Ensure that the given claims array is keyed by the claim name.
      *
-     * @param  mixed  $items
+     * @param mixed $items
+     *
      * @return array
      */
     private function sanitizeClaims($items)
     {
         $claims = [];
         foreach ($items as $key => $value) {
-            if (! is_string($key) && $value instanceof Claim) {
+            if ( ! is_string($key) && $value instanceof Claim) {
                 $key = $value->getName();
             }
 
-            $claims[$key] = $value;
+            $claims[ $key ] = $value;
         }
 
         return $claims;
+    }
+
+    public function map(callable $callback)
+    {
+        $keys = array_keys($this->items);
+
+        $items = array_map($callback, $this->items, $keys);
+
+        return new static(array_combine($keys, $items));
+    }
+
+    public function only($keys)
+    {
+        if (is_null($keys)) {
+            return new static($this->items);
+        }
+
+        $keys = is_array($keys) ? $keys : func_get_args();
+
+        return new static(Arr::only($this->items, $keys));
     }
 }

@@ -3,8 +3,8 @@
 namespace coffin\jwtauth;
 
 use think\Request;
+use coffin\jwtauth\http\parser\Parser;
 use coffin\jwtauth\contract\JWTSubject;
-use coffin\jwtauth\contract\http\Parser;
 use coffin\jwtauth\support\CustomClaims;
 use coffin\jwtauth\exception\JWTException;
 
@@ -56,7 +56,7 @@ class JWT
             return call_user_func_array([$this->manager, $method], $parameters);
         }
 
-        throw new BadMethodCallException("Method [$method] does not exist.");
+        throw new \BadMethodCallException("Method [$method] does not exist.");
     }
 
     /**
@@ -81,6 +81,17 @@ class JWT
     public function blacklist()
     {
         return $this->manager->getBlacklist();
+    }
+
+    public function createToken(array $customerClaim)
+    {
+        $payloadData = $this->customerClaim($customerClaim);
+        return $this->manager->encode($payloadData)->get();
+    }
+
+    public function customerClaim(array $payloadData)
+    {
+        return $this->getPayloadFactory()->claims($payloadData)->make();
     }
 
     /**

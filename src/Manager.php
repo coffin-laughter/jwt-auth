@@ -2,11 +2,14 @@
 
 namespace coffin\jwtauth;
 
+use coffin\jwtauth\claim\Collection;
 use coffin\jwtauth\provider\JWT\Provider;
 use coffin\jwtauth\support\CustomClaims;
 use coffin\jwtauth\support\RefreshFlow;
+
 // use coffin\jwtauth\contract\provider\JWT as JWTContract;
 use coffin\jwtauth\provider\JWT\Lcobucci as JWTContract;
+use think\helper\Arr;
 
 class Manager
 {
@@ -220,7 +223,7 @@ class Manager
     protected function buildRefreshClaims(Payload $payload)
     {
         // Get the claims to be persisted from the payload
-        $persistentClaims = collect($payload->toArray())
+        $persistentClaims = (new Collection($payload->toArray()))
             ->only($this->persistentClaims)
             ->toArray();
 

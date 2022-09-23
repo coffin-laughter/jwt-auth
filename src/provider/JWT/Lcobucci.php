@@ -2,21 +2,21 @@
 
 namespace coffin\jwtauth\provider\JWT;
 
+use Exception;
 use DateTimeImmutable;
 use DateTimeInterface;
-use Exception;
-use think\Collection;
-use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer;
-use Lcobucci\JWT\Signer\Ecdsa;
 use Lcobucci\JWT\Signer\Key;
-use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa;
+use Lcobucci\JWT\Signer\Ecdsa;
+use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Token\Builder;
+use coffin\jwtauth\claim\Collection;
+use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Token\RegisteredClaims;
-use Lcobucci\JWT\Validation\Constraint\SignedWith;
 use coffin\jwtauth\contract\provider\JWT;
 use coffin\jwtauth\exception\JWTException;
+use Lcobucci\JWT\Validation\Constraint\SignedWith;
 use coffin\jwtauth\exception\TokenInvalidException;
 
 class Lcobucci extends Provider implements JWT
@@ -77,7 +77,6 @@ class Lcobucci extends Provider implements JWT
     public function decode($token)
     {
         try {
-            /** @var \Lcobucci\JWT\Token\Plain */
             $token = $this->config->parser()->parse($token);
         } catch (Exception $e) {
             throw new TokenInvalidException('Could not decode token: ' . $e->getMessage(), $e->getCode(), $e);

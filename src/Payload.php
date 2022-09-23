@@ -35,7 +35,7 @@ class Payload implements ArrayAccess, Countable, JsonSerializable
     {
         if (preg_match('/get(.+)\b/i', $method, $matches)) {
             foreach ($this->claims as $claim) {
-                if (get_class($claim) === 'Tymon\\JWTAuth\\Claims\\' . $matches[1]) {
+                if (get_class($claim) === 'coffin\\jwtauth\\claim\\' . $matches[1]) {
                     return $claim->getValue();
                 }
             }

@@ -12,19 +12,23 @@
 
 namespace coffin\jwtauth\provider;
 
-use think\Service;
-use think\facade\Config;
+use think\App;
 use coffin\jwtauth\http\parser\Cookie;
 use coffin\jwtauth\command\SecretCommand;
 use coffin\jwtauth\http\parser\AuthHeader;
 use coffin\jwtauth\http\parser\RouteParam;
 
-abstract class AbstractServiceProvider extends Service
+abstract class AbstractServiceProvider
 {
+    private $app;
     private $config;
     private $request;
 
-    abstract public function boot();
+    public function __construct(App $app)
+    {
+        $this->app = $app;
+        $this->request = $app->request;
+    }
 
     public function register()
     {
@@ -44,7 +48,7 @@ abstract class AbstractServiceProvider extends Service
     protected function registerClaimFactory()
     {
         $this->app->make('coffin\jwtauth\claim\Factory', [
-            $this->app->request,
+            $this->request,
         ])->setTTL($this->config['ttl'])->setRequest($this->config['leeway']);
     }
 
@@ -65,7 +69,7 @@ abstract class AbstractServiceProvider extends Service
     protected function registerJWTBlacklist()
     {
         $this->app->make('coffin\jwtauth\Blacklist', [
-            new $this->config['blacklist_storage'],
+            new $this->config['blacklist_storage'](),
         ])->setGracePeriod($this->config['blacklist_grace_period'])->setRefreshTTL($this->config['refresh_ttl']);
     }
 
@@ -79,7 +83,7 @@ abstract class AbstractServiceProvider extends Service
         $this->app->make('coffin\jwtauth\provider\JWT\Lcobucci', [
             $this->config['secret'],
             $this->config['algo'],
-            $this->config['keys']
+            $this->config['keys'],
         ]);
     }
 
@@ -116,7 +120,7 @@ abstract class AbstractServiceProvider extends Service
     protected function registerTokenParser()
     {
         $this->app->make('coffin\jwtauth\http\parser\Parser', [
-            $this->app->request,
+            $this->request,
             [
                 new AuthHeader(),
                 new Cookie(),
