@@ -86,6 +86,7 @@ class JWT
     public function createToken(array $customerClaim)
     {
         $payloadData = $this->customerClaim($customerClaim);
+
         return $this->manager->encode($payloadData)->get();
     }
 
@@ -415,6 +416,8 @@ class JWT
      */
     protected function requireToken()
     {
+        $this->getToken();
+
         if ( ! $this->token) {
             throw new JWTException('A token is required');
         }
