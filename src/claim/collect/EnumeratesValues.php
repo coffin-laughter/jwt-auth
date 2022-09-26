@@ -17,7 +17,6 @@ use Exception;
 use Traversable;
 use CachingIterator;
 use JsonSerializable;
-use think\helper\Arr;
 use UnexpectedValueException;
 use coffin\jwtauth\claim\Collection;
 use Symfony\Component\VarDumper\VarDumper;
